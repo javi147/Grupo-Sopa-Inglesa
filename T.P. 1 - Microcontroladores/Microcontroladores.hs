@@ -67,11 +67,13 @@ esCeroElDivisor unMicro = (acumuladorB unMicro) == 0
 	
 lod :: Int -> Microcontrolador -> Microcontrolador	
 lod addr unMicro= nop unMicro{
-	acumuladorA = (!!) (memoria unMicro) addr
+	acumuladorA = (!!) (memoria unMicro) (addr - 1)
 	}
 
-str addr val (Microcontrolador memoria acumuladorA acumuladorB programCounter etiqueta instrucciones) =
-	Microcontrolador memoria acumuladorA acumuladorB programCounter etiqueta instrucciones 
+str :: Int -> Int -> Microcontrolador -> Microcontrolador	
+str addr val unMicro = nop unMicro{
+	memoria = take (addr - 1)(memoria unMicro) ++ [val] ++ drop (addr) (memoria unMicro)
+	}
 	
 --Punto 4.2--
 divisionDosPorCero :: Microcontrolador -> Microcontrolador
