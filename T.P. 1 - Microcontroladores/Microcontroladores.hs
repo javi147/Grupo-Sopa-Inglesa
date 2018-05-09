@@ -1,62 +1,88 @@
-  import Text.Show.Functions
-  import Data.List
+import Text.Show.Functions
+import Data.List
 
-data Microcontrolador = Microcontrolador {
-  memoria :: [Int],
-  a :: Int,
-  b :: Int,
-  programCounter :: Int,
-  etiqueta :: String
-}deriving (Show)
+data Micro = Micro{
+    memoria :: [Int],
+    a :: Int,
+    b :: Int,
+    pc :: Int,
+    etiqueta :: String,
+    program :: [Instruccion]
+} deriving (Show)
 
-nop :: Microcontrolador -> Microcontrolador
-nop unMicro = unMicro {
-  programCounter = programCounter unMicro + 1
-}
+type Instruccion = Micro -> Micro
 
-add :: Microcontrolador -> Microcontrolador
-add unMicro =  nop unMicro {
-  a = a unMicro + b unMicro,
+addCounter :: Instruccion
+addCounter (Micro m a b pc "" i) = (Micro m a b (pc+1) "" i)
+addCounter micro = micro
+
+nop :: Instruccion
+nop = addCounter
+
+add :: Instruccion
+add micro =  addCounter micro {
+  a = a micro + b micro,
   b = 0
 }
   
-swap :: Microcontrolador -> Microcontrolador  
-swap unMicro = nop unMicro{
-  a = b unMicro,
-  b = a unMicro
+swap :: Instruccion  
+swap micro = addCounter micro{
+  a = b micro,
+  b = a micro
 }
 
-lovd :: Int -> Microcontrolador -> Microcontrolador 
-lovd val unMicro = nop unMicro {
+lodv :: Int -> Micro -> Micro 
+lodv val micro = addCounter micro {
   a = val
 }
 
-divide :: Microcontrolador -> Microcontrolador
-divide unMicro
-  | esCeroElDivisor unMicro = nop unMicro {
-    b = 0,
+divide :: Instruccion
+divide micro
+  | divisorEsCero micro = addCounter micro {
+      b = 0,
     etiqueta = "DIVISION BY ZERO"
     }
-  | otherwise = nop unMicro {
-    a = a unMicro `div` b unMicro,
-    b = 0
+  | otherwise = addCounter micro {
+      a = a micro `div` b micro,
+      b = 0
     }
   
-esCeroElDivisor :: Microcontrolador -> Bool 
-esCeroElDivisor unMicro = (b unMicro) == 0
+divisorEsCero :: Micro -> Bool 
+divisorEsCero micro = b micro == 0
   
-lod :: Int -> Microcontrolador -> Microcontrolador  
-lod addr unMicro= nop unMicro{
-  a = (!!) (memoria unMicro) (addr - 1)
+lod :: Int -> Micro -> Micro  
+lod addr micro= addCounter micro{
+  a = (!!) (memoria micro) (addr - 1)
   }
 
-str :: Int -> Int -> Microcontrolador -> Microcontrolador 
-str addr val unMicro = nop unMicro{
-  memoria = take (addr - 1)(memoria unMicro) ++ [val] ++ drop (addr) (memoria unMicro)
-  }
+str :: Int -> Int -> Micro -> Micro 
+str addr val micro = addCounter micro{
+  memoria = take (addr - 1)(memoria micro) ++ [val] ++ drop (addr) (memoria micro)
+}
 
-xt8088= Microcontrolador [] 0 0 0 ""
+strProgram :: Micro -> [Instruccion] -> Micro
+strProgram micro program = micro {
+  program = program
+}
 
-fp20 = Microcontrolador [] 7 24 0 ""
+run :: Micro -> [Instruccion] -> Micro
+run micro [] = micro
+run micro (x:xs) = run (x micro) xs
 
-at8086 = Microcontrolador [1..20] 0 0 0 ""
+ifnz :: Micro -> [Instruccion] -> Micro
+ifnz micro [] = micro
+ifnz (Micro m 0 b pc e i) _ = (Micro m 0 b pc e i)
+ifnz (Micro m a b pc "" i) (x:xs) = ifnz (x (Micro m a b pc "" i)) xs
+ifnz micro _ = micro
+
+
+
+xt8088= Micro [] 0 0 0 "" []
+
+fp20 = Micro [] 7 24 0 "" []
+  
+at8086 = Micro [1..20] 0 0 0 "" []
+
+add10to22 = [add, lodv 22, swap, lodv 10]
+
+divide2by0 = [divide, lod 1, swap, lod 2, str 2 0,str 1 2]
