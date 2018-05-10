@@ -69,12 +69,16 @@ run :: Micro -> [Instruccion] -> Micro
 run micro [] = micro
 run micro (x:xs) = run (x micro) xs
 
+runProgram :: Instruccion
+runProgram (Micro m a b pc e []) = (Micro m a b pc e [])
+runProgram micro = run ((head (program micro)) micro) (tail (program micro))
+
+
 ifnz :: Micro -> [Instruccion] -> Micro
 ifnz micro [] = micro
 ifnz (Micro m 0 b pc e i) _ = (Micro m 0 b pc e i)
 ifnz (Micro m a b pc "" i) (x:xs) = ifnz (x (Micro m a b pc "" i)) xs
 ifnz micro _ = micro
-
 
 
 xt8088= Micro [] 0 0 0 "" []
@@ -83,6 +87,6 @@ fp20 = Micro [] 7 24 0 "" []
   
 at8086 = Micro [1..20] 0 0 0 "" []
 
-add10to22 = [add, lodv 22, swap, lodv 10]
+add10to22 = reverse [add, lodv 22, swap, lodv 10]
 
-divide2by0 = [divide, lod 1, swap, lod 2, str 2 0,str 1 2]
+divide2by0 = reverse [divide, lod 1, swap, lod 2, str 2 0,str 1 2]
