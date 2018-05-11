@@ -98,6 +98,15 @@ debug = filter (not.aBug)
 aBug :: Instruccion -> Bool
 aBug f = (==0).sum.(++ [a.f $ xt8088]).(++ [b.f $ xt8088]).memoria.f $ xt8088
 
+memoriaOrdenada :: Micro -> Bool
+memoriaOrdenada (Micro (x:xs) a b pc e p)
+    | emptyMemo.memoria = true
+    | xs < ultimo x = memoriaOrdenada (Micro x a b pc e p)
+    | otherwise = false
+
+ultimo (x:xs) = xs
+
+
 xt8088= Micro [] 0 0 0 "" []
 
 fp20 = Micro [] 7 24 0 "" []
