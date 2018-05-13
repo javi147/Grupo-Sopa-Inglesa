@@ -112,6 +112,25 @@ fp20 = Micro [] 7 24 0 "" []
   
 at8086 = Micro [1..20] 0 0 0 "" []
 
+mi8088 = Micro [0,0..] 0 0 0 "" []
+
+-- Si intentamos cargar y ejecutar cualquier programa al micro
+-- con memoria infinita nunca se llegara a cargar porque
+-- strProgram devuelve un dato de tipo Micro, cuya
+-- primer variable devuelve una lista infinita y esta nunca
+-- termina de resolverse.
+
+-- Si intentamos aplicar memoriaOrdenada a el micro con
+-- memoria infinita, nunca terminara de comparar si su primer
+-- elemento es menor o igual a los subsiguientes, porque 
+-- los subsiguientes son infinitos.
+
+-- El constructor Micro fue modelado para representar un
+-- microcontrolador, una computadora para aplicaciones
+-- especificas. Como toda computadora su memoria es
+-- limitada, por lo tanto definir un microcontrolador
+-- con memoria infinita no tiene sentido.
+
 add22to10 = reverse [add, lodv 22, swap, lodv 10]
 
 divide2by0 = reverse [divide, lod 1, swap, lod 2, str 2 0,str 1 2]
