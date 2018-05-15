@@ -2,135 +2,122 @@ import Text.Show.Functions
 import Data.List
 
 data Micro = Micro{
-    memoria :: [Int],
+    memory :: [Int],
     a :: Int,
     b :: Int,
     pc :: Int,
-    etiqueta :: String,
-    program :: [Instruccion]
+    errorMsg :: String,
+    program :: [Instruction]
 } deriving (Show)
 
-type Instruccion = Micro -> Micro
+type Instruction = Micro -> Micro
   
-addCounter :: Instruccion
-addCounter (Micro m a b pc "" i) = (Micro m a b (pc+1) "" i)
+addCounter :: Instruction
+addCounter (Micro m a b pc "" p) = (Micro m a b (pc+1) "" p)
 addCounter micro = micro
 
-nop :: Instruccion
+setA :: Int -> Instruction
+setA valor micro = micro {
+  a = valor
+}
+
+setB :: Int -> Instruction
+setB valor micro = micro {
+  b = valor
+}
+
+setMemo :: [Int] -> Instruction
+setMemo list micro = micro {
+  memory = list
+}
+
+nop :: Instruction
 nop = addCounter
 
-add :: Instruccion
-add micro =  addCounter micro {
-  a = a micro + b micro,
-  b = 0
-}
+add :: Instruction
+add micro = addCounter.setB 0.setA (a micro + b micro) $ micro
   
-swap :: Instruccion  
-swap micro = addCounter micro{
-  a = b micro,
-  b = a micro
-}
+swap :: Instruction   
+swap micro = addCounter.setB (a micro).setA (b micro) $ micro
 
-lodv :: Int -> Instruccion 
-lodv val micro = addCounter micro {
-  a = val
-}
+lodv :: Int -> Instruction 
+lodv valor = addCounter.setA valor
 
-divide :: Instruccion
-divide micro
-  | divisorEsCero micro = addCounter micro {
-      b = 0,
-    etiqueta = "DIVISION BY ZERO"
-    }
-  | otherwise = addCounter micro {
-      a = a micro `div` b micro,
-      b = 0
-    }
+divide :: Instruction
+divide (Micro m a 0 pc e p) = addCounter (Micro m a 0 pc "DIVISION BY ZERO" p ) 
+divide micro = addCounter.setB 0.(setA (a micro `div` b micro)) $ micro
   
-divisorEsCero :: Micro -> Bool 
-divisorEsCero micro = b micro == 0
-  
-lod :: Int -> Instruccion  
+lod :: Int -> Instruction  
 lod addr micro 
   | emptyMemo micro = micro
-  | otherwise = addCounter micro {
-    a = (!!) (memoria micro) (addr - 1)
-    }
+  | otherwise = addCounter.setA (memory micro !! (addr - 1)) $ micro
 
-str :: Int -> Int -> Instruccion
+str :: Int -> Int -> Instruction
 str addr val micro 
-  | emptyMemo micro = addCounter micro {
-      memoria = (take (addr - 1) [0,0..]) ++ [val]
-      }
-  | addr <= ((length.memoria) micro) = addCounter micro {
-      memoria = (take (addr - 1) (memoria micro)) ++ [val] ++ (drop (addr) (memoria micro))
-      }
-  | otherwise = addCounter micro {
-      memoria = (memoria micro) ++ (take (addr - ((length.memoria) micro) - 1) [0,0..]) ++ [val]
-      }
+  | emptyMemo micro = addCounter.setMemo ((take (addr - 1) [0,0..]) ++ [val]) $ micro
+  | addr <= ((length.memory) micro) = 
+    addCounter.setMemo ((take (addr - 1) (memory micro)) ++ [val] ++ (drop (addr) (memory micro))) $ micro
+  | otherwise = 
+    addCounter.setMemo ((memory micro) ++ (take (addr - ((length.memory) micro) - 1) [0,0..]) ++ [val]) $micro
 
 emptyMemo :: Micro -> Bool
-emptyMemo = (==[]).memoria
+emptyMemo = (==[]).memory
 
-strProgram :: Micro -> [Instruccion] -> Micro
+strProgram :: Micro -> [Instruction] -> Micro
 strProgram micro program = micro {
-  program = program
+  program = reverse program
 }
 
-run :: Micro -> [Instruccion] -> Micro
-run micro [] = micro
-run micro (x:xs) = run (x micro) xs
+run :: Micro -> [Instruction] -> Micro
+run (Micro m a b pc "" p) [] = (Micro m a b pc "" p)
+run (Micro m a b pc "" p) (x:xs) = run (x (Micro m a b pc "" p)) xs
+run micro _ = micro
 
-runProgram :: Instruccion
+runProgram :: Instruction
 runProgram (Micro m a b pc e []) = (Micro m a b pc e [])
 runProgram micro = run ((head (program micro)) micro) (tail (program micro))
 
-
-ifnz :: Micro -> [Instruccion] -> Micro
+ifnz :: Micro -> [Instruction] -> Micro
 ifnz micro [] = micro
 ifnz (Micro m 0 b pc e i) _ = (Micro m 0 b pc e i)
 ifnz (Micro m a b pc "" i) (x:xs) = ifnz (x (Micro m a b pc "" i)) xs
 ifnz micro _ = micro
 
-debug :: [Instruccion] -> [Instruccion]
+debug :: [Instruction] -> [Instruction]
 debug = filter (not.aBug)
 
-aBug :: Instruccion -> Bool
-aBug f = (==0).sum.(++ [a.f $ xt8088]).(++ [b.f $ xt8088]).memoria.f $ xt8088
+aBug :: Instruction -> Bool
+aBug f = (==0).sum.(++ [a.f $ xt8088]).(++ [b.f $ xt8088]).memory.f $ xt8088
 
-memoriaOrdenada :: Micro -> Bool
-memoriaOrdenada micro
-  | emptyMemo micro = True
-  | all ((<=).head.memoria $ micro) (tail.memoria $ micro) = memoriaOrdenada micro{
-      memoria = tail.memoria $ micro
-    }
-  | otherwise = False
+orderedMemo :: Micro -> Bool
+orderedMemo (Micro [] _ _ _ _ _) = True
+orderedMemo (Micro (x:xs) _ _ _ _ _) = (all (>= x) xs) && orderedMemo (Micro xs 0 0 0 "" [])
 
 xt8088= Micro [] 0 0 0 "" []
 
 fp20 = Micro [] 7 24 0 "" []
-  
+
 at8086 = Micro [1..20] 0 0 0 "" []
 
 mi8088 = Micro [0,0..] 0 0 0 "" []
 
 -- Si intentamos cargar y ejecutar cualquier programa al micro
--- con memoria infinita nunca se llegara a cargar porque
+-- con memory infinita nunca se llegara a cargar porque
 -- strProgram devuelve un dato de tipo Micro, cuya
 -- primer variable devuelve una lista infinita y esta nunca
 -- termina de resolverse.
 
--- Si intentamos aplicar memoriaOrdenada a el micro con
--- memoria infinita, nunca terminara de comparar si su primer
+-- Si intentamos aplicar orderedMemo a el micro con
+-- memory infinita, nunca terminara de comparar si su primer
 -- elemento es menor o igual a los subsiguientes, porque 
 -- los subsiguientes son infinitos.
 
 -- El constructor Micro fue modelado para representar un
 -- microcontrolador, una computadora para aplicaciones
--- especificas. Como toda computadora su memoria es
+-- especificas. Como toda computadora su memory es
 -- limitada, por lo tanto definir un microcontrolador
--- con memoria infinita no tiene sentido.
+-- con memory infinita no tiene sentido.
 
-add22to10 = reverse [add, lodv 22, swap, lodv 10]
+add22to10 = [lodv 10, swap, lodv 22, add]
 
-divide2by0 = reverse [divide, lod 1, swap, lod 2, str 2 0,str 1 2]
+divide2by0 = [str 1 2, str 2 0, lod 2, swap, lod 1, divide]
