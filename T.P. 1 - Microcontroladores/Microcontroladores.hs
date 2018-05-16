@@ -35,7 +35,7 @@ swap micro = addCounter.setB (a micro).setA (b micro) $ micro
 
 lodv valor = addCounter.setA valor
 
-divide (Micro m a 0 pc e p) = addCounter (Micro m a 0 pc "DIVISION BY ZERO" p ) 
+divide (Micro m a 0 pc e p) = addCounter (Micro m a 0 (pc+1) "DIVISION BY ZERO" p ) 
 divide micro = addCounter.setB 0.(setA (a micro `div` b micro)) $ micro
   
 lod addr micro 
